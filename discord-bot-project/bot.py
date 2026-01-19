@@ -1,0 +1,96 @@
+import os
+import discord
+from discord.ext import commands
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Get the bot token from environment variables
+TOKEN = os.getenv('DISCORD_TOKEN')
+
+# Set up intents - required for accessing certain Discord features
+intents = discord.Intents.default()
+intents.message_content = True  # Required for reading message content
+intents.members = True  # Required for member-related features
+
+# Create bot instance with command prefix "!"
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+
+# Event: Bot is ready and connected
+@bot.event
+async def on_ready():
+    print(f'{bot.user} has connected to Discord!')
+    print(f'Bot is in {len(bot.guilds)} guild(s)')
+
+    # Set bot status
+    await bot.change_presence(
+        activity=discord.Activity(
+            type=discord.ActivityType.watching,
+            name='for !help'
+        )
+    )
+
+
+# Event: Handle errors in commands
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        await ctx.send('Command not found. Use `!help` to see available commands.')
+    elif isinstance(error, commands.MissingPermissions):
+        await ctx.send('You do not have permission to use this command.')
+    else:
+        await ctx.send(f'An error occurred: {error}')
+
+
+# Command: !ping - Check bot latency
+@bot.command(name='ping', help='Check bot latency')
+async def ping(ctx):
+    latency = round(bot.latency * 1000)
+    await ctx.send(f'Pong! Latency: {latency}ms')
+
+
+# Command: !hello - Greet the user
+@bot.command(name='hello', help='Get a friendly greeting')
+async def hello(ctx):
+    await ctx.send(f'Hello, {ctx.author.mention}! Welcome to the server!')
+
+
+# Command: !serverinfo - Display server information
+@bot.command(name='serverinfo', help='Display information about the server')
+async def serverinfo(ctx):
+    guild = ctx.guild
+
+    # Create an embed for better formatting
+    embed = discord.Embed(
+        title=f'{guild.name} Server Info',
+        color=discord.Color.blue()
+    )
+
+    # Set server icon as thumbnail if available
+    if guild.icon:
+        embed.set_thumbnail(url=guild.icon.url)
+
+    # Add server information fields
+    embed.add_field(name='Server ID', value=guild.id, inline=True)
+    embed.add_field(name='Owner', value=guild.owner.mention if guild.owner else 'Unknown', inline=True)
+    embed.add_field(name='Created On', value=guild.created_at.strftime('%Y-%m-%d'), inline=True)
+    embed.add_field(name='Members', value=guild.member_count, inline=True)
+    embed.add_field(name='Text Channels', value=len(guild.text_channels), inline=True)
+    embed.add_field(name='Voice Channels', value=len(guild.voice_channels), inline=True)
+    embed.add_field(name='Roles', value=len(guild.roles), inline=True)
+    embed.add_field(name='Boost Level', value=guild.premium_tier, inline=True)
+    embed.add_field(name='Boosts', value=guild.premium_subscription_count, inline=True)
+
+    await ctx.send(embed=embed)
+
+
+# Run the bot
+if __name__ == '__main__':
+    if TOKEN is None:
+        print('Error: DISCORD_TOKEN not found in environment variables.')
+        print('Please create a .env file with your bot token.')
+        print('See .env.example for the required format.')
+    else:
+        bot.run(TOKEN)
